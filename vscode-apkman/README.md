@@ -1,0 +1,2 @@
+# APKMan VSCode extension
+
