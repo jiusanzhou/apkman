@@ -3,23 +3,88 @@
 	"displayName": "vscode-apkman",
 	"description": "VSCode plugin for Adnroid reverse engineering.",
 	"version": "0.0.1",
+	"publisher": "zoe",
 	"engines": {
 		"vscode": "^1.33.0"
 	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/jiusanzhou/apkman"
+	},
 	"categories": [
+		"Debuggers",
 		"Other"
 	],
-	"activationEvents": [
-		"onCommand:extension.helloWorld"
+	"keywords": [
+		"Adnroid",
+		"smali",
+		"RE",
+		"Reverse",
+		"Apk"
 	],
+	"icon": "resources/apkman-logo.png",
+	"homepage": "https://p.zoe.im/apkman",
+	"author": {
+		"name": "Zoe",
+		"email": "jsz3@live.com",
+		"url": "https://zoe.im"
+	},
+	"bugs": {
+		"url": "https://github.com/jiusanzhou/apkman.git"
+	},
 	"main": "./out/extension.js",
+	"galleryBanner": {
+		"color": "#1289B9",
+		"theme": "dark"
+	},
+	"activationEvents": [
+		"*",
+		"onLanguage:smali"
+	],
 	"contributes": {
 		"commands": [
 			{
 				"command": "extension.helloWorld",
 				"title": "Hello World"
 			}
-		]
+		],
+		"menus": {
+			"commandPalette": [],
+			"editor/context": []
+		},
+		"keybindings": [],
+		"languages": [
+			{
+				"id": "smali",
+				"aliases": [
+					"Smali",
+					"Smali Bytecode",
+					"smali"
+				],
+				"extensions": [
+					".smali"
+				],
+				"configuration": "./resources/smali.config.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "smali",
+				"scopeName": "source.smali",
+				"path": "./syntaxes/smali.tmLanguage"
+			}
+		],
+		"configuration": {
+			"title": "APKMan",
+			"properties": {
+				"apkman.workspace": {
+					"type": "string",
+					"default": "",
+					"description": "APIMan workspace path. Default is the current directory of apk file."
+				}
+			}
+		},
+		"iconThemes": []
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
