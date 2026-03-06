@@ -248,17 +248,20 @@ function ManifestSidebar({ data, onSelect }: { data: ApkData; onSelect: (path: s
 
 function DexSidebar({ data }: { data: ApkData }) {
   const [expandedPackages, setExpandedPackages] = useState<Set<string>>(new Set());
-  const [selectedClass, setSelectedClass] = useState<string | null>(null);
+  const [selectedDex, setSelectedDex] = useState<string>('all');
 
   if (data.dexFiles.size === 0) {
     return <p className="text-sm text-muted-foreground p-2">Parsing DEX files...</p>;
   }
 
-  // Build package hierarchy from all DEX files
-  const packageMap = new Map<string, string[]>();
+  const dexNames = Array.from(data.dexFiles.keys()).sort();
+  const totalClasses = Array.from(data.dexFiles.values()).reduce((sum, d) => sum + d.classCount, 0);
+
+  // Build package hierarchy, filtered by selected DEX
+  const packageMap = new Map<string, { simpleName: string; dexName: string }[]>();
   for (const [dexName, dex] of data.dexFiles) {
+    if (selectedDex !== 'all' && dexName !== selectedDex) continue;
     for (const cls of dex.classes) {
-      // Convert Lcom/example/Class; to com.example
       const className = cls.className
         .replace(/^L/, '')
         .replace(/;$/, '')
@@ -268,11 +271,12 @@ function DexSidebar({ data }: { data: ApkData }) {
       const simpleName = lastDot > 0 ? className.substring(lastDot + 1) : className;
 
       if (!packageMap.has(pkg)) packageMap.set(pkg, []);
-      packageMap.get(pkg)!.push(simpleName);
+      packageMap.get(pkg)!.push({ simpleName, dexName });
     }
   }
 
   const sortedPackages = Array.from(packageMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  const filteredClassCount = sortedPackages.reduce((sum, [, classes]) => sum + classes.length, 0);
 
   const togglePackage = (pkg: string) => {
     setExpandedPackages(prev => {
@@ -286,8 +290,47 @@ function DexSidebar({ data }: { data: ApkData }) {
   return (
     <div className="space-y-0.5 text-xs">
       <div className="text-muted-foreground mb-2">
-        {data.dexFiles.size} DEX file(s), {Array.from(data.dexFiles.values()).reduce((sum, d) => sum + d.classCount, 0)} classes
+        {data.dexFiles.size} DEX file(s), {totalClasses} classes
       </div>
+
+      {/* DEX file selector */}
+      {data.dexFiles.size > 1 && (
+        <div className="mb-2 space-y-1">
+          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">DEX Filter</div>
+          <div className="flex flex-wrap gap-1">
+            <button
+              onClick={() => setSelectedDex('all')}
+              className={`px-2 py-0.5 text-[10px] rounded font-medium transition-colors ${
+                selectedDex === 'all'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted/50 text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              All ({totalClasses})
+            </button>
+            {dexNames.map((name) => {
+              const count = data.dexFiles.get(name)!.classCount;
+              return (
+                <button
+                  key={name}
+                  onClick={() => setSelectedDex(name)}
+                  className={`px-2 py-0.5 text-[10px] rounded font-medium transition-colors ${
+                    selectedDex === name
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted/50 text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {name} ({count})
+                </button>
+              );
+            })}
+          </div>
+          {selectedDex !== 'all' && (
+            <div className="text-muted-foreground">Showing {filteredClassCount} classes from {selectedDex}</div>
+          )}
+        </div>
+      )}
+
       {sortedPackages.map(([pkg, classes]) => (
         <div key={pkg}>
           <button
@@ -300,9 +343,12 @@ function DexSidebar({ data }: { data: ApkData }) {
           </button>
           {expandedPackages.has(pkg) && (
             <div className="ml-4 space-y-0.5">
-              {classes.sort().map((cls) => (
-                <p key={cls} className="font-mono py-0.5 px-1 hover:bg-muted/50 rounded cursor-default">
-                  {cls}
+              {classes.sort((a, b) => a.simpleName.localeCompare(b.simpleName)).map((cls, i) => (
+                <p key={`${cls.simpleName}-${i}`} className="font-mono py-0.5 px-1 hover:bg-muted/50 rounded cursor-default flex items-center gap-1">
+                  <span>{cls.simpleName}</span>
+                  {data.dexFiles.size > 1 && selectedDex === 'all' && (
+                    <span className="text-[9px] text-muted-foreground ml-auto">{cls.dexName.replace('classes', '').replace('.dex', '') || '1'}</span>
+                  )}
                 </p>
               ))}
             </div>

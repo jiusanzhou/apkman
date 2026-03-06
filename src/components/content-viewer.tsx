@@ -129,6 +129,7 @@ function DexViewer({ data, searchSelectedClass, onSearchSelectedClassHandled }: 
   const [javaCode, setJavaCode] = useState<string | null>(null);
   const [javaLoading, setJavaLoading] = useState(false);
   const [javaError, setJavaError] = useState<string | null>(null);
+  const [dexFilter, setDexFilter] = useState<string>('all');
 
   // Handle search navigation
   useEffect(() => {
@@ -151,6 +152,11 @@ function DexViewer({ data, searchSelectedClass, onSearchSelectedClassHandled }: 
     }
     return classes.sort((a, b) => a.className.localeCompare(b.className));
   }, [data.dexFiles]);
+
+  const filteredClasses = useMemo(() => {
+    if (dexFilter === 'all') return allClasses;
+    return allClasses.filter(c => c.dexName === dexFilter);
+  }, [allClasses, dexFilter]);
 
   // Cache for decompiled Java code
   const javaCacheRef = useRef(new Map<string, string>());
@@ -193,19 +199,38 @@ function DexViewer({ data, searchSelectedClass, onSearchSelectedClassHandled }: 
     return <div className="p-6 text-muted-foreground">Parsing DEX files...</div>;
   }
 
+  const dexNames = Array.from(data.dexFiles.keys()).sort();
   const selected = selectedClass
     ? allClasses.find(c => c.className === selectedClass)
     : null;
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-4 py-2 border-b flex items-center gap-2 shrink-0">
+      <div className="px-4 py-2 border-b flex items-center gap-2 shrink-0 flex-wrap">
         <span className="font-medium text-sm">DEX Decompiler</span>
         <Badge variant="secondary">
           {allClasses.length} classes
         </Badge>
         {data.dexFiles.size > 1 && (
-          <Badge variant="outline">{data.dexFiles.size} DEX files</Badge>
+          <>
+            <Badge variant="outline">{data.dexFiles.size} DEX files</Badge>
+            <Separator orientation="vertical" className="h-5" />
+            <div className="flex items-center gap-1">
+              {['all', ...dexNames].map((name) => (
+                <button
+                  key={name}
+                  onClick={() => setDexFilter(name)}
+                  className={`px-2 py-0.5 text-[10px] rounded font-medium transition-colors ${
+                    dexFilter === name
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {name === 'all' ? `All (${allClasses.length})` : `${name} (${data.dexFiles.get(name)!.classCount})`}
+                </button>
+              ))}
+            </div>
+          </>
         )}
         <div className="ml-auto flex items-center gap-1 bg-muted rounded-md p-0.5">
           <button
@@ -230,17 +255,22 @@ function DexViewer({ data, searchSelectedClass, onSearchSelectedClassHandled }: 
         {/* Class list */}
         <ScrollArea className="w-80 border-r shrink-0 h-full">
           <div className="p-2 space-y-0.5">
-            {allClasses.map((cls) => {
+            {filteredClasses.map((cls) => {
               const simpleName = cls.className.replace(/^L/, '').replace(/;$/, '').replace(/\//g, '.');
               return (
                 <button
                   key={cls.className}
                   onClick={() => setSelectedClass(cls.className)}
-                  className={`w-full text-left text-xs font-mono py-1 px-2 rounded truncate hover:bg-muted/50 ${
+                  className={`w-full text-left text-xs font-mono py-1 px-2 rounded truncate hover:bg-muted/50 flex items-center gap-1 ${
                     selectedClass === cls.className ? 'bg-primary/10 text-primary' : ''
                   }`}
                 >
-                  {simpleName}
+                  <span className="truncate">{simpleName}</span>
+                  {data.dexFiles.size > 1 && dexFilter === 'all' && (
+                    <span className="shrink-0 text-[9px] text-muted-foreground ml-auto px-1 bg-muted rounded">
+                      {cls.dexName.replace('.dex', '').replace('classes', 'dex')}
+                    </span>
+                  )}
                 </button>
               );
             })}
