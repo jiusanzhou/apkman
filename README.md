@@ -186,7 +186,6 @@ cp pkg/dex_wasm.js ../../public/wasm/
 - [x] Web Worker parsing for large APKs
 - [x] PWA offline support
 - [ ] Decompiled Java source (currently Smali only for export)
-- [ ] APK download from URL
 - [ ] Shareable analysis links (hash-based)
 - [ ] Browser extension for one-click analysis
 
