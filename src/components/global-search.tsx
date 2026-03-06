@@ -106,7 +106,8 @@ export function GlobalSearch({ data, onNavigate }: GlobalSearchProps) {
           });
         }
         // Search methods
-        for (const method of cls.methods) {
+        const allMethods = [...cls.directMethods, ...cls.virtualMethods];
+        for (const method of allMethods) {
           if (hits.length >= limit) break;
           if (method.name.toLowerCase().includes(q)) {
             hits.push({
