@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileTree } from '@/components/file-tree';
 import { ContentViewer } from '@/components/content-viewer';
 import { GlobalSearch, type SearchResult } from '@/components/global-search';
+import { exportAsZip, downloadBlob } from '@/lib/export-zip';
 
 interface ApkViewerProps {
   data: ApkData;
@@ -22,6 +23,7 @@ export function ApkViewer({ data, onReset, onCompare }: ApkViewerProps) {
   const [sidebarWidth, setSidebarWidth] = useState(300);
   const [activeTab, setActiveTab] = useState<string>('file');
   const [searchSelectedClass, setSearchSelectedClass] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const handleFileSelect = useCallback((path: string) => {
     setSelectedFile(path);
@@ -46,6 +48,18 @@ export function ApkViewer({ data, onReset, onCompare }: ApkViewerProps) {
       setSearchSelectedClass(result.className || null);
     }
   }, []);
+
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    try {
+      const blob = await exportAsZip(data);
+      downloadBlob(blob, data.fileName.replace('.apk', '-decompiled.zip'));
+    } catch (e) {
+      console.error('Export failed:', e);
+    } finally {
+      setExporting(false);
+    }
+  }, [data]);
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -78,6 +92,9 @@ export function ApkViewer({ data, onReset, onCompare }: ApkViewerProps) {
               Compare
             </Button>
           )}
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting} className="text-xs h-7">
+            {exporting ? 'Exporting...' : 'Export ZIP'}
+          </Button>
           <ThemeToggle />
           <Button variant="ghost" size="sm" onClick={onReset}>
             Close
