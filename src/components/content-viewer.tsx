@@ -14,15 +14,17 @@ interface ContentViewerProps {
   data: ApkData;
   selectedFile: string | null;
   activeTab: string;
+  searchSelectedClass?: string | null;
+  onSearchSelectedClassHandled?: () => void;
 }
 
-export function ContentViewer({ data, selectedFile, activeTab }: ContentViewerProps) {
+export function ContentViewer({ data, selectedFile, activeTab, searchSelectedClass, onSearchSelectedClassHandled }: ContentViewerProps) {
   // Show tab-based content when no file is selected
   if (activeTab === 'manifest' && !selectedFile) {
     return <ManifestViewer data={data} />;
   }
   if (activeTab === 'dex' && !selectedFile) {
-    return <DexViewer data={data} />;
+    return <DexViewer data={data} searchSelectedClass={searchSelectedClass} onSearchSelectedClassHandled={onSearchSelectedClassHandled} />;
   }
   if (activeTab === 'resources' && !selectedFile) {
     return <ResourcesViewer data={data} />;
@@ -121,12 +123,20 @@ function ManifestViewer({ data }: { data: ApkData }) {
   );
 }
 
-function DexViewer({ data }: { data: ApkData }) {
+function DexViewer({ data, searchSelectedClass, onSearchSelectedClassHandled }: { data: ApkData; searchSelectedClass?: string | null; onSearchSelectedClassHandled?: () => void }) {
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'smali' | 'java'>('java');
   const [javaCode, setJavaCode] = useState<string | null>(null);
   const [javaLoading, setJavaLoading] = useState(false);
   const [javaError, setJavaError] = useState<string | null>(null);
+
+  // Handle search navigation
+  useEffect(() => {
+    if (searchSelectedClass) {
+      setSelectedClass(searchSelectedClass);
+      onSearchSelectedClassHandled?.();
+    }
+  }, [searchSelectedClass, onSearchSelectedClassHandled]);
 
   const allClasses = useMemo(() => {
     const classes: { dexName: string; className: string; smali: string }[] = [];

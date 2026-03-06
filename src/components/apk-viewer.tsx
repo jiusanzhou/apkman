@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileTree } from '@/components/file-tree';
 import { ContentViewer } from '@/components/content-viewer';
+import { GlobalSearch, type SearchResult } from '@/components/global-search';
 
 interface ApkViewerProps {
   data: ApkData;
@@ -19,6 +20,7 @@ export function ApkViewer({ data, onReset }: ApkViewerProps) {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(300);
   const [activeTab, setActiveTab] = useState<string>('file');
+  const [searchSelectedClass, setSearchSelectedClass] = useState<string | null>(null);
 
   const handleFileSelect = useCallback((path: string) => {
     setSelectedFile(path);
@@ -28,6 +30,20 @@ export function ApkViewer({ data, onReset }: ApkViewerProps) {
   const handleTabSelect = useCallback((tab: string) => {
     setActiveTab(tab);
     setSelectedFile(null);
+  }, []);
+
+  const handleSearchNavigate = useCallback((result: SearchResult) => {
+    if (result.category === 'permission') {
+      setActiveTab('manifest');
+      setSelectedFile(null);
+    } else if (result.category === 'string') {
+      setActiveTab('resources');
+      setSelectedFile(null);
+    } else if (result.category === 'class' || result.category === 'method') {
+      setActiveTab('dex');
+      setSelectedFile(null);
+      setSearchSelectedClass(result.className || null);
+    }
   }, []);
 
   return (
@@ -55,6 +71,7 @@ export function ApkViewer({ data, onReset }: ApkViewerProps) {
           )}
         </div>
         <div className="flex items-center gap-1">
+          <GlobalSearch data={data} onNavigate={handleSearchNavigate} />
           <ThemeToggle />
           <Button variant="ghost" size="sm" onClick={onReset}>
             Close
@@ -125,6 +142,8 @@ export function ApkViewer({ data, onReset }: ApkViewerProps) {
             data={data}
             selectedFile={selectedFile}
             activeTab={activeTab}
+            searchSelectedClass={searchSelectedClass}
+            onSearchSelectedClassHandled={() => setSearchSelectedClass(null)}
           />
         </div>
       </div>
