@@ -1,3 +1,32 @@
-node_modules
-out
-.vscode
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# next.js
+.next/
+out/
+
+# build
+build/
+dist/
+
+# env
+.env*.local
+
+# debug
+npm-debug.log*
+
+# misc
+.DS_Store
+*.tgz
+
+# rust build artifacts
+vendor/dex-wasm/target/
+vendor/dex-wasm/pkg/
+vendor/dex-decompiler/target/
+
+# IDE
+.idea/
+.vscode/
+*.swp

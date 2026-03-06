@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="96" fill="#0a0a0a"/>
+  <!-- Android head outline -->
+  <g transform="translate(256, 200)">
+    <path d="M-100,0 A100,100 0 0,1 100,0" stroke="#3eff8b" stroke-width="12" fill="none" stroke-linecap="round"/>
+    <line x1="-60" y1="-10" x2="-80" y2="-60" stroke="#3eff8b" stroke-width="10" stroke-linecap="round"/>
+    <line x1="60" y1="-10" x2="80" y2="-60" stroke="#3eff8b" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="-40" cy="-20" r="8" fill="#3eff8b"/>
+    <circle cx="40" cy="-20" r="8" fill="#3eff8b"/>
+  </g>
+  <!-- Magnifying glass -->
+  <g transform="translate(330, 300)">
+    <circle cx="0" cy="0" r="50" stroke="#3eff8b" stroke-width="10" fill="none"/>
+    <line x1="35" y1="35" x2="70" y2="70" stroke="#3eff8b" stroke-width="12" stroke-linecap="round"/>
+  </g>
+  <!-- Decoration -->
+  <text x="110" y="350" font-family="monospace" font-size="28" fill="#3eff8b" opacity="0.4">0x</text>
+  <text x="110" y="385" font-family="monospace" font-size="22" fill="#3eff8b" opacity="0.25">DEX</text>
+  <!-- Dexray text -->
+  <text x="256" y="450" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="72" letter-spacing="-2">
+    <tspan fill="#3eff8b">Dex</tspan><tspan fill="#666666">ray</tspan>
+  </text>
+</svg>
