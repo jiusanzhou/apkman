@@ -4,7 +4,7 @@ import { useCallback, useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatFileSize, type CachedApkSummary } from '@/lib/apk-store';
+import { formatFileSize, type CachedApkSummary, type ParseProgress } from '@/lib/apk-store';
 
 interface ApkUploadProps {
   onFile: (file: File) => void;
@@ -13,9 +13,10 @@ interface ApkUploadProps {
   cachedApks: CachedApkSummary[];
   onLoadCached: (hash: string) => void;
   onDeleteCached: (hash: string, e: React.MouseEvent) => void;
+  parseProgress?: ParseProgress | null;
 }
 
-export function ApkUpload({ onFile, loading, error, cachedApks, onLoadCached, onDeleteCached }: ApkUploadProps) {
+export function ApkUpload({ onFile, loading, error, cachedApks, onLoadCached, onDeleteCached, parseProgress }: ApkUploadProps) {
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -95,7 +96,18 @@ export function ApkUpload({ onFile, loading, error, cachedApks, onLoadCached, on
               {loading ? (
                 <>
                   <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-                  <p className="text-muted-foreground">Analyzing APK...</p>
+                  <p className="text-muted-foreground">{parseProgress?.phase || 'Analyzing APK...'}</p>
+                  {parseProgress && (
+                    <div className="w-full max-w-xs">
+                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary rounded-full transition-all duration-300"
+                          style={{ width: `${parseProgress.percent}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 text-center">{Math.round(parseProgress.percent)}%</p>
+                    </div>
+                  )}
                 </>
               ) : (
                 <>

@@ -1,6 +1,7 @@
 /**
  * APK Store - Central state management for parsed APK data
  * With IndexedDB caching for previously analyzed APKs.
+ * Supports Web Worker parsing for large APKs.
  */
 
 import JSZip from 'jszip';
@@ -42,13 +43,97 @@ export interface CachedApkSummary {
   timestamp: number;
 }
 
+export interface ParseProgress {
+  phase: string;
+  percent: number;
+}
+
 let currentData: ApkData | null = null;
 
 export function getApkData(): ApkData | null {
   return currentData;
 }
 
-export async function loadApk(file: File): Promise<ApkData> {
+function buildFileTreeFromEntries(
+  entries: { path: string; isDir: boolean; size: number; compressedSize: number }[]
+): FileTreeNode {
+  const root: FileTreeNode = {
+    name: '/',
+    path: '',
+    isDirectory: true,
+    children: [],
+    size: 0,
+    compressedSize: 0,
+  };
+
+  const dirs = new Map<string, FileTreeNode>();
+  dirs.set('', root);
+
+  const sortedPaths = entries.map(e => e.path).sort();
+
+  for (const filePath of sortedPaths) {
+    const entry = entries.find(e => e.path === filePath)!;
+    const parts = filePath.split('/').filter(p => p.length > 0);
+
+    let currentPath = '';
+    let parentNode = root;
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      const isLast = i === parts.length - 1;
+      currentPath = currentPath ? `${currentPath}/${part}` : part;
+
+      if (isLast && !entry.isDir) {
+        const node: FileTreeNode = {
+          name: part,
+          path: currentPath,
+          isDirectory: false,
+          children: [],
+          size: entry.size,
+          compressedSize: entry.compressedSize,
+        };
+        parentNode.children.push(node);
+      } else {
+        let dirNode = dirs.get(currentPath);
+        if (!dirNode) {
+          dirNode = {
+            name: part,
+            path: currentPath,
+            isDirectory: true,
+            children: [],
+            size: 0,
+            compressedSize: 0,
+          };
+          dirs.set(currentPath, dirNode);
+          parentNode.children.push(dirNode);
+        }
+        parentNode = dirNode;
+      }
+    }
+  }
+
+  const sortChildren = (node: FileTreeNode) => {
+    node.children.sort((a, b) => {
+      if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+    for (const child of node.children) {
+      if (child.isDirectory) sortChildren(child);
+    }
+  };
+  sortChildren(root);
+
+  return root;
+}
+
+/**
+ * Parse APK using a Web Worker for non-blocking UI.
+ * Falls back to main-thread parsing if workers are unavailable.
+ */
+export async function loadApk(
+  file: File,
+  onProgress?: (progress: ParseProgress) => void
+): Promise<ApkData> {
   const buffer = await file.arrayBuffer();
   const hash = await computeHash(buffer);
 
@@ -56,10 +141,10 @@ export async function loadApk(file: File): Promise<ApkData> {
   const cached = await getCachedApk(hash);
   if (cached) {
     console.log(`Cache hit for ${file.name} (${hash.slice(0, 8)})`);
+    onProgress?.({ phase: 'Loading from cache...', percent: 50 });
     const zip = await JSZip.loadAsync(cached.zipBuffer);
     const fileTree = buildFileTree(zip);
-    
-    // Restore dexFiles Map
+
     const dexFiles = new Map<string, DexFile>();
     if (cached.dexFiles) {
       for (const df of cached.dexFiles) {
@@ -84,16 +169,125 @@ export async function loadApk(file: File): Promise<ApkData> {
     };
 
     currentData = data;
+    onProgress?.({ phase: 'Complete!', percent: 100 });
     return data;
   }
 
-  // Fresh parse
+  // Try Web Worker parsing
+  if (typeof Worker !== 'undefined') {
+    try {
+      const data = await parseWithWorker(buffer, file.name, file.size, hash, onProgress);
+      currentData = data;
+
+      // Cache the results (async, non-blocking)
+      cacheApk({
+        hash,
+        fileName: file.name,
+        fileSize: file.size,
+        timestamp: Date.now(),
+        manifestXml: data.manifestXml,
+        manifest: data.manifest,
+        dexFiles: Array.from(data.dexFiles.entries()).map(([name, d]) => ({ name, data: d })),
+        resourceTable: data.resourceTable,
+        signatureInfo: data.signatureInfo,
+        signatureScheme: data.signatureScheme,
+        zipBuffer: buffer,
+      }).catch(e => console.warn('Failed to cache APK:', e));
+
+      return data;
+    } catch (e) {
+      console.warn('Worker parsing failed, falling back to main thread:', e);
+    }
+  }
+
+  // Fallback: main-thread parsing
+  return parseOnMainThread(buffer, file.name, file.size, hash, onProgress);
+}
+
+async function parseWithWorker(
+  buffer: ArrayBuffer,
+  fileName: string,
+  fileSize: number,
+  hash: string,
+  onProgress?: (progress: ParseProgress) => void
+): Promise<ApkData> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(
+      new URL('./apk-parse-worker.ts', import.meta.url),
+      { type: 'module' }
+    );
+
+    worker.onmessage = async (e) => {
+      const msg = e.data;
+
+      if (msg.type === 'progress') {
+        onProgress?.({ phase: msg.phase, percent: msg.percent });
+      } else if (msg.type === 'result') {
+        worker.terminate();
+        try {
+          const result = msg.data;
+          // Rebuild JSZip and FileTree on main thread (needed for lazy file access)
+          const zip = await JSZip.loadAsync(result.zipBuffer);
+          const fileTree = buildFileTreeFromEntries(result.fileEntries);
+
+          const dexFiles = new Map<string, DexFile>();
+          for (const df of result.dexFiles) {
+            dexFiles.set(df.name, df.data as DexFile);
+          }
+
+          const data: ApkData = {
+            fileName: result.fileName,
+            fileSize: result.fileSize,
+            fileTree,
+            zip,
+            manifest: result.manifest as ManifestInfo | null,
+            manifestXml: result.manifestXml,
+            dexFiles,
+            resourceTable: result.resourceTable as ResourceTable | null,
+            signatureInfo: result.signatureInfo as SignatureInfo | null,
+            signatureScheme: result.signatureScheme,
+            fileCache: new Map(),
+            hash,
+            fromCache: false,
+          };
+
+          resolve(data);
+        } catch (err) {
+          reject(err);
+        }
+      } else if (msg.type === 'error') {
+        worker.terminate();
+        reject(new Error(msg.message));
+      }
+    };
+
+    worker.onerror = (err) => {
+      worker.terminate();
+      reject(err);
+    };
+
+    // Transfer the buffer to the worker for zero-copy
+    worker.postMessage(
+      { type: 'parse', buffer, fileName, fileSize },
+      [buffer]
+    );
+  });
+}
+
+async function parseOnMainThread(
+  buffer: ArrayBuffer,
+  fileName: string,
+  fileSize: number,
+  hash: string,
+  onProgress?: (progress: ParseProgress) => void
+): Promise<ApkData> {
+  onProgress?.({ phase: 'Extracting ZIP...', percent: 5 });
   const zip = await JSZip.loadAsync(buffer);
   const fileTree = buildFileTree(zip);
 
   const data: ApkData = {
-    fileName: file.name,
-    fileSize: file.size,
+    fileName,
+    fileSize,
     fileTree,
     zip,
     manifest: null,
@@ -109,14 +303,17 @@ export async function loadApk(file: File): Promise<ApkData> {
 
   currentData = data;
 
-  // Parse contents
-  await parseApkContents(data);
+  // Parse contents with progress
+  onProgress?.({ phase: 'Parsing manifest...', percent: 15 });
+  await parseApkContents(data, onProgress);
+
+  onProgress?.({ phase: 'Complete!', percent: 100 });
 
   // Cache the results (async, non-blocking)
   cacheApk({
     hash,
-    fileName: file.name,
-    fileSize: file.size,
+    fileName,
+    fileSize,
     timestamp: Date.now(),
     manifestXml: data.manifestXml,
     manifest: data.manifest,
@@ -236,7 +433,10 @@ function buildFileTree(zip: JSZip): FileTreeNode {
   return root;
 }
 
-async function parseApkContents(data: ApkData): Promise<void> {
+async function parseApkContents(
+  data: ApkData,
+  onProgress?: (progress: ParseProgress) => void
+): Promise<void> {
   const promises: Promise<void>[] = [];
 
   promises.push(
@@ -254,6 +454,8 @@ async function parseApkContents(data: ApkData): Promise<void> {
       }
     })()
   );
+
+  onProgress?.({ phase: 'Parsing DEX files...', percent: 30 });
 
   const dexFiles = Object.keys(data.zip.files).filter(
     f => f.match(/^classes\d*\.dex$/)
@@ -275,6 +477,8 @@ async function parseApkContents(data: ApkData): Promise<void> {
     );
   }
 
+  onProgress?.({ phase: 'Parsing resources...', percent: 70 });
+
   promises.push(
     (async () => {
       try {
@@ -288,6 +492,8 @@ async function parseApkContents(data: ApkData): Promise<void> {
       }
     })()
   );
+
+  onProgress?.({ phase: 'Parsing signatures...', percent: 85 });
 
   promises.push(
     (async () => {

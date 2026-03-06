@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { loadApk, loadCachedApk, listCachedApks, deleteCachedApk, formatFileSize, type ApkData, type CachedApkSummary } from '@/lib/apk-store';
+import { loadApk, loadCachedApk, listCachedApks, deleteCachedApk, formatFileSize, type ApkData, type CachedApkSummary, type ParseProgress } from '@/lib/apk-store';
 import { ApkUpload } from '@/components/apk-upload';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ApkViewer } from '@/components/apk-viewer';
@@ -13,6 +13,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [cachedApks, setCachedApks] = useState<CachedApkSummary[]>([]);
   const [compareMode, setCompareMode] = useState(false);
+  const [parseProgress, setParseProgress] = useState<ParseProgress | null>(null);
 
   useEffect(() => {
     listCachedApks().then(setCachedApks);
@@ -21,14 +22,18 @@ export default function Home() {
   const handleFile = useCallback(async (file: File) => {
     setLoading(true);
     setError(null);
+    setParseProgress({ phase: 'Reading file...', percent: 0 });
     try {
-      const data = await loadApk(file);
+      const data = await loadApk(file, (progress) => {
+        setParseProgress(progress);
+      });
       setApkData(data);
       listCachedApks().then(setCachedApks);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load APK');
     } finally {
       setLoading(false);
+      setParseProgress(null);
     }
   }, []);
 
@@ -74,6 +79,7 @@ export default function Home() {
             cachedApks={cachedApks}
             onLoadCached={handleLoadCached}
             onDeleteCached={handleDeleteCached}
+            parseProgress={parseProgress}
           />
         </>
       ) : compareMode ? (
