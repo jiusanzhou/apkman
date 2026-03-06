@@ -30,3 +30,4 @@ vendor/dex-decompiler/target/
 .idea/
 .vscode/
 *.swp
+.vercel

@@ -2,7 +2,7 @@
 
 > Reverse engineer Android APKs directly in your browser. No uploads, no servers, no installs.
 
-**[Live Demo →](https://apkman.zoe.im)**
+**[Live Demo →](https://apkman.wencai.app)**
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
