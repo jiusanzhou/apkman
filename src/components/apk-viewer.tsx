@@ -14,9 +14,10 @@ import { GlobalSearch, type SearchResult } from '@/components/global-search';
 interface ApkViewerProps {
   data: ApkData;
   onReset: () => void;
+  onCompare?: () => void;
 }
 
-export function ApkViewer({ data, onReset }: ApkViewerProps) {
+export function ApkViewer({ data, onReset, onCompare }: ApkViewerProps) {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(300);
   const [activeTab, setActiveTab] = useState<string>('file');
@@ -72,6 +73,11 @@ export function ApkViewer({ data, onReset }: ApkViewerProps) {
         </div>
         <div className="flex items-center gap-1">
           <GlobalSearch data={data} onNavigate={handleSearchNavigate} />
+          {onCompare && (
+            <Button variant="outline" size="sm" onClick={onCompare} className="text-xs h-7">
+              Compare
+            </Button>
+          )}
           <ThemeToggle />
           <Button variant="ghost" size="sm" onClick={onReset}>
             Close

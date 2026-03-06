@@ -5,12 +5,14 @@ import { loadApk, loadCachedApk, listCachedApks, deleteCachedApk, formatFileSize
 import { ApkUpload } from '@/components/apk-upload';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ApkViewer } from '@/components/apk-viewer';
+import { ApkCompare } from '@/components/apk-compare';
 
 export default function Home() {
   const [apkData, setApkData] = useState<ApkData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cachedApks, setCachedApks] = useState<CachedApkSummary[]>([]);
+  const [compareMode, setCompareMode] = useState(false);
 
   useEffect(() => {
     listCachedApks().then(setCachedApks);
@@ -56,6 +58,7 @@ export default function Home() {
   const handleReset = useCallback(() => {
     setApkData(null);
     setError(null);
+    setCompareMode(false);
     listCachedApks().then(setCachedApks);
   }, []);
 
@@ -73,8 +76,10 @@ export default function Home() {
             onDeleteCached={handleDeleteCached}
           />
         </>
+      ) : compareMode ? (
+        <ApkCompare baseApk={apkData} onClose={() => setCompareMode(false)} />
       ) : (
-        <ApkViewer data={apkData} onReset={handleReset} />
+        <ApkViewer data={apkData} onReset={handleReset} onCompare={() => setCompareMode(true)} />
       )}
     </div>
   );
