@@ -16,8 +16,8 @@
   <!-- Decoration -->
   <text x="110" y="350" font-family="monospace" font-size="28" fill="#3eff8b" opacity="0.4">0x</text>
   <text x="110" y="385" font-family="monospace" font-size="22" fill="#3eff8b" opacity="0.25">DEX</text>
-  <!-- Dexray text -->
+  <!-- APKMan text -->
   <text x="256" y="450" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="72" letter-spacing="-2">
-    <tspan fill="#3eff8b">Dex</tspan><tspan fill="#666666">ray</tspan>
+    <tspan fill="#3eff8b">APK</tspan><tspan fill="#666666">Man</tspan>
   </text>
 </svg>

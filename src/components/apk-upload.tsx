@@ -70,8 +70,8 @@ export function ApkUpload({ onFile, loading, error, cachedApks, onLoadCached, on
           </div>
 
           <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
-            <span className="text-primary">Dex</span>
-            <span className="text-muted-foreground">ray</span>
+            <span className="text-primary">APK</span>
+            <span className="text-muted-foreground">Man</span>
           </h1>
 
           <p className="text-xl text-muted-foreground max-w-xl mx-auto">
