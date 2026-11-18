@@ -31,3 +31,7 @@ vendor/dex-decompiler/target/
 .vscode/
 *.swp
 .vercel
+
+# Cloudflare migration
+.open-next/
+.wrangler/
